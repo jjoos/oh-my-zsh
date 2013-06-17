@@ -7,10 +7,10 @@ CMD_MAX_EXEC_TIME=5
 local pwd='%~'
 local return_state='%(?.%{$fg[green]%}✓%{$reset_color%}.%{$fg[red]%}✗%{$reset_color%})'
 local time='%T' 
-([ "$USER" != "$DEFAULT_USERNAME" ] || [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]) && local username='%n@%m '
+([ "$USER" != "$DEFAULT_USERNAME" ] || [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]) && local username='%{$fg[cyan]%}%n%{$reset_color%}@%{$fg[cyan]%}%m%{$reset_color%}:'
 
-PROMPT="${username}${return_state} "
-RPROMPT="[ %{$fg[cyan]%}${pwd}%{$reset_color%} ] [ %{$fg[green]%}${time} %{$reset_color%}]"
+PROMPT="${return_state} "
+RPROMPT="[ ${username}%{$fg[cyan]%}${pwd}%{$reset_color%} ] [ %{$fg[green]%}${time} %{$reset_color%}]"
 
 # git prompt theming
 ZSH_THEME_GIT_PROMPT_PREFIX="%{$fg[cyan]%}"
@@ -43,21 +43,32 @@ rbenv_version() {
 }
 
 precmd() {
-  #${git_branch} ${rbenv} 
-  # Add `%*` to display the time
   git_prompt_info=`git_prompt_info`
-  git_prompt_short_sha=`git_prompt_short_sha`
-  git_prompt_status=`git_prompt_status`
   cmd_exec_time=`cmd_exec_time`
   rbenv_version=`rbenv_version`
 
-  [[ -n "$git_prompt_info" ]] && print -nP "[ $git_prompt_info%{$reset_color%} ] "
-  [[ -n "$git_prompt_short_sha" ]] && print -nP "[ %{$fg[cyan]%}$git_prompt_short_sha%{$reset_color%} ] "
-  [[ -n "$git_prompt_status" ]] && print -nP "[$git_prompt_status%{$reset_color%} ] "
-  [[ -n "$cmd_exec_time" ]] && print -nP "[ %{$fg[red]%}$cmd_exec_time%{$reset_color%} ] "
-  [[ -n "$rbenv_version" ]] && print -nP "[ %{$fg[cyan]%}$rbenv_version%{$reset_color%} ] "
-  
-  if [[ -n "$git_prompt_info" || -n "$git_prompt_status" || -n "$cmd_exec_time" || -n "$rbenv_version" ]]; then
+  if [[ -n "$git_prompt_info" || -n "$cmd_exec_time" || -n "$rbenv_version" ]]; then
+    git_prompt_short_sha=`git_prompt_short_sha`
+    git_prompt_status=`git_prompt_status`
+    
+    # right alligning {{{
+    length=0
+    #extract to function (prompt length)
+    [[ -n "$git_prompt_info" ]] && (( length=${length} + ${#${git_prompt_info}}-13 ))
+    [[ -n "$git_prompt_short_sha" ]] && (( length=${length} + ${#${git_prompt_short_sha}}+5 ))
+    [[ -n "$git_prompt_status" ]] && (( length=${length} + ${#${git_prompt_status}}-5 ))
+    [[ -n "$cmd_exec_time" ]] && (( length=${length} + ${#${cmd_exec_time}}+5 ))
+    [[ -n "$rbenv_version" ]] && (( length=${length} + ${#${rbenv_version}}+5 ))
+    if [[ $length -gt 0 && $COLUMNS -gt $length ]]; then
+      print -nP "${(l.(($COLUMNS-$length)).. .)}"
+    fi
+    #}}}
+    
+    [[ -n "$git_prompt_info" ]] && print -nP "[ $git_prompt_info%{$reset_color%} ] "
+    [[ -n "$git_prompt_short_sha" ]] && print -nP "[ %{$fg[cyan]%}$git_prompt_short_sha%{$reset_color%} ] "
+    [[ -n "$git_prompt_status" ]] && print -nP "[$git_prompt_status%{$reset_color%} ] "
+    [[ -n "$cmd_exec_time" ]] && print -nP "[ %{$fg[red]%}$cmd_exec_time%{$reset_color%} ] "
+    [[ -n "$rbenv_version" ]] && print -nP "[ %{$fg[cyan]%}$rbenv_version%{$reset_color%} ] "
     print -P ""
   fi
   # Reset value since `preexec` isn't always triggered
